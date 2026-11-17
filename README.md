@@ -20,7 +20,8 @@ manually proofread gold answers for 17 questions. The winner's answers from
 - [x] Answering: prompt routing by answer type, structured output with CoT and page references
 - [x] Evaluation: compare against the gold answers and the winner's answers on 17 questions
 - [x] LangGraph workflow, web search fallback via MCP
-- [ ] FastAPI service + Postman collection
+- [x] FastAPI service
+- [ ] Postman collection, temporary public link
 - [ ] Dify version for comparison
 
 Table serialization is left out on purpose: the original author found it slightly hurt results.
@@ -299,3 +300,31 @@ graph TD;
   whose answer is on the page under different wording. Reranking scores cannot tell "the report lacks
   this" from "the report says it differently", so in practice the fallback fires on routing.
 - The evaluation still uses the knowledge base only (`answer.answer`), as in the competition.
+
+## HTTP API (FastAPI)
+
+```bash
+uv run python -m rag_demo.api          # http://127.0.0.1:8000/docs
+```
+
+| Method | Path | Key | Description |
+|---|---|---|---|
+| GET | `/health` | no | Liveness check |
+| GET | `/companies` | yes | Companies in the knowledge base |
+| POST | `/ask` | yes | `{"question": "...", "kind": null}` -> answer, source, page references or URLs, workflow trace |
+| GET | `/docs` | no | Swagger UI to try the endpoints in the browser |
+
+```bash
+curl -X POST http://127.0.0.1:8000/ask \
+  -H "X-API-Key: $API_KEY" -H "Content-Type: application/json" \
+  -d '{"question": "What was the Dividend per share (in USD) for Ritchie Bros. Auctioneers Incorporated?"}'
+```
+
+Every `/ask` call costs OpenAI credits (about $0.005-0.01), so access is limited by default:
+
+- `API_KEY` must be set in `.env`, or the server refuses to start. Clients send it as `X-API-Key`.
+- At most 10 requests per minute per client IP and 200 per day in total (`RATE_LIMIT_PER_MINUTE`,
+  `DAILY_REQUEST_LIMIT`). Counters live in memory and reset when the server restarts.
+- Unexpected errors return `{"detail": "internal error"}`; details go to the server log only.
+- The server listens on 127.0.0.1 only. Public access goes through a tunnel.
+- Also set a monthly usage limit for the OpenAI key in the OpenAI dashboard.
