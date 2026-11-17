@@ -15,7 +15,7 @@ manually proofread gold answers for 17 questions. The winner's answers from
 - [x] Parsing: PDF -> per-page Markdown with Docling (keep page numbers and tables)
 - [x] Cleaning: inspect parse quality, regex cleanup of broken text
 - [x] Tagging: LLM-extracted document metadata, checked against `subset.csv`
-- [ ] Ingestion: 300-token chunks (50 overlap), one FAISS index per company, page number in chunk metadata
+- [x] Ingestion: 300-token chunks (50 overlap), one FAISS index per company, page number in chunk metadata
 - [ ] Retrieval: company routing -> vector search -> parent page -> LLM reranking
 - [ ] Answering: prompt routing by answer type, structured output with CoT and page references
 - [ ] Evaluation: compare against the gold answers and the winner's answers on 17 questions
@@ -131,3 +131,31 @@ It is not used for routing.
 
 Short aliases such as "AA" can appear inside other words, so routing must match whole words and
 prefer the longest name.
+
+## Ingestion
+
+```bash
+uv run python -m rag_demo.ingest
+```
+
+Writes `data/erc2/indexes/<sha1>.faiss` and `<sha1>.chunks.json` (chunk id, page number, text).
+
+- Chunks never cross page boundaries and record their page number, so a hit can be expanded
+  to its full parent page during retrieval.
+- 300-token chunks with 50-token overlap, split by LangChain's `RecursiveCharacterTextSplitter`
+  on Markdown structure (headings, paragraphs, lines), measured with the `cl100k_base` tokenizer.
+- `text-embedding-3-small`, one `IndexFlatIP` per company. Flat means exact search, and inner
+  product equals cosine similarity because OpenAI embeddings are unit length.
+
+| Report | Pages | Chunks |
+|---|---|---|
+| AA Limited | 61 | 405 |
+| HCA Healthcare | 132 | 566 |
+| Wheeler REIT | 92 | 381 |
+| Ritchie Bros. | 143 | 541 |
+| Albany International | 130 | 474 |
+
+2,367 chunks and 491,563 tokens in total, about $0.01 to embed.
+
+Quick check with plain vector search: for 7 of the 8 questions with gold pages, a gold page is among
+the pages of the top-5 chunks. The miss is Albany's "R&D spending on advanced programs".
