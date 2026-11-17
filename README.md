@@ -19,7 +19,7 @@ manually proofread gold answers for 17 questions. The winner's answers from
 - [x] Retrieval: company routing -> vector search -> parent page -> LLM reranking
 - [x] Answering: prompt routing by answer type, structured output with CoT and page references
 - [x] Evaluation: compare against the gold answers and the winner's answers on 17 questions
-- [ ] LangGraph workflow, web search fallback via MCP (MCP server done)
+- [x] LangGraph workflow, web search fallback via MCP
 - [ ] FastAPI service + Postman collection
 - [ ] Dify version for comparison
 
@@ -264,3 +264,35 @@ It exposes one tool, `web_search(query, max_results=5)`, returning title, URL an
 
 To use it from other MCP clients (Kiro, Claude Desktop), register the command
 `uv --directory <path-to-rag-demo> run python -m rag_demo.mcp_server`.
+
+## Workflow (LangGraph)
+
+```bash
+uv run python -m rag_demo.workflow --kind number "What was the Dividend per share (in USD) for Ritchie Bros. Auctioneers Incorporated?"
+uv run python -m rag_demo.workflow --kind number "What was Apple's total revenue in fiscal 2022 in USD?"
+uv run python -m rag_demo.workflow --mermaid
+```
+
+```mermaid
+graph TD;
+  START([start]) --> route
+  route -.->|known company| retrieve
+  route -.->|no known company, or several| web_search
+  retrieve -.->|best page relevance >= 0.3| answer_from_kb
+  retrieve -.->|best page relevance < 0.3| web_search
+  web_search --> answer_from_web
+  answer_from_kb --> END([end])
+  answer_from_web --> END
+```
+
+- `web_search` calls our MCP server through `langchain-mcp-adapters`, which starts it as a subprocess
+  over stdio, the same way any MCP client would.
+- `answer_from_web` uses the same answer types and `final_answer` rules as the knowledge base prompts,
+  with numbered search results as context, and returns the URLs it used.
+- An N/A answer from the knowledge base does not trigger a web search. For many questions N/A is the
+  correct answer ("the report does not state this"), and a number from the web would be scored wrong.
+- The relevance threshold is low on purpose. On the 17 test questions the best page always scores at
+  least 0.4, including questions about metrics the report does not contain (gold N/A) and questions
+  whose answer is on the page under different wording. Reranking scores cannot tell "the report lacks
+  this" from "the report says it differently", so in practice the fallback fires on routing.
+- The evaluation still uses the knowledge base only (`answer.answer`), as in the competition.

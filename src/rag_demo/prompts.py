@@ -6,7 +6,7 @@ including descriptions, to the model.
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, create_model
 
 # ---------------------------------------------------------------------------
 # Tagging: document metadata from the first pages of a report
@@ -386,4 +386,63 @@ ANSWER_PROMPTS: dict[str, tuple[str, type[BaseModel]]] = {
     "number": (build_answer_system_prompt(NUMBER_EXAMPLE), NumberAnswer),
     "boolean": (build_answer_system_prompt(BOOLEAN_EXAMPLE), BooleanAnswer),
     "names": (build_answer_system_prompt(NAMES_EXAMPLE), NamesAnswer),
+}
+
+
+# ---------------------------------------------------------------------------
+# Web answering: fallback when the knowledge base cannot answer
+# Same answer types and final_answer rules as above, with web results as the context
+# ---------------------------------------------------------------------------
+
+WEB_ANSWER_INSTRUCTION = """
+You are a question answering system that works from web search results.
+The question could not be answered from the company annual reports in the knowledge base, so
+you receive numbered web search results (title, URL, snippet) instead.
+
+Answer only from these results. Prefer official sources such as the company's own website,
+investor relations pages and regulatory filings over news and aggregator sites.
+If the results do not contain the answer, say so: return 'N/A', or False for yes/no questions.
+Numbers must be written out in full units: "$394.3 billion" -> 394300000000, "$2.1 million" -> 2100000.
+
+Before giving a final answer, carefully think out loud and step by step.
+"""
+
+WEB_ANSWER_USER_PROMPT = """
+Here are the web search results:
+\"\"\"
+{results}
+\"\"\"
+
+---
+
+Here is the question:
+"{question}"
+"""
+
+
+def _web_schema(kind_schema: type[BaseModel]) -> type[BaseModel]:
+    """Web answer schema for one answer type, reusing that type's final_answer field."""
+    final = kind_schema.model_fields["final_answer"]
+    return create_model(
+        f"Web{kind_schema.__name__}",
+        step_by_step_analysis=(
+            str,
+            Field(description="Step-by-step analysis of the search results, at least 3 steps."),
+        ),
+        reasoning_summary=(
+            str,
+            Field(description="Concise summary of the reasoning. Around 50 words."),
+        ),
+        used_results=(
+            list[int],
+            Field(
+                description="Numbers of the search results the answer is based on. Empty if the answer is N/A."
+            ),
+        ),
+        final_answer=(final.annotation, Field(description=final.description)),
+    )
+
+
+WEB_ANSWER_SCHEMAS: dict[str, type[BaseModel]] = {
+    kind: _web_schema(schema) for kind, (_, schema) in ANSWER_PROMPTS.items()
 }

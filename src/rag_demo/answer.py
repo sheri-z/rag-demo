@@ -32,6 +32,8 @@ class Answer:
     company: str | None = None
     retrieved_pages: list[int] = field(default_factory=list)
     dropped_pages: list[int] = field(default_factory=list)  # cited but not retrieved
+    source: str = "knowledge_base"  # or "web"
+    web_sources: list[dict] = field(default_factory=list)  # [{"title", "url"}] for web answers
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -62,6 +64,7 @@ def generate(question: str, kind: AnswerKind, pages: list[RetrievedPage]):
 
 
 def answer(question: str, kind: AnswerKind) -> Answer:
+    """Answer from the knowledge base only (used by the evaluation)."""
     companies = route(question)
     pages = retrieve(question)
     if not pages:
@@ -71,7 +74,12 @@ def answer(question: str, kind: AnswerKind) -> Answer:
             value=False if kind == "boolean" else "N/A",
             reasoning_summary="The question does not name a company in the knowledge base.",
         )
+    return answer_from_pages(question, kind, pages, companies[0].name)
 
+
+def answer_from_pages(
+    question: str, kind: AnswerKind, pages: list[RetrievedPage], company: str
+) -> Answer:
     result = generate(question, kind, pages)
     sha1 = pages[0].sha1
     retrieved = [p.page for p in pages]
@@ -85,7 +93,7 @@ def answer(question: str, kind: AnswerKind) -> Answer:
         references=[{"sha1": sha1, "page": p} for p in cited if p in retrieved],
         reasoning_summary=result.reasoning_summary,
         step_by_step_analysis=result.step_by_step_analysis,
-        company=companies[0].name,
+        company=company,
         retrieved_pages=retrieved,
         dropped_pages=[p for p in cited if p not in retrieved],
     )
