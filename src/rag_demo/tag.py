@@ -22,11 +22,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from rag_demo.clean import CLEAN_DIR
 from rag_demo.config import get_openai, get_settings
-from rag_demo.download import DATA_DIR
-
-METADATA_PATH = DATA_DIR / "metadata.json"
+from rag_demo.paths import CLEAN_DIR, DATA_DIR, METADATA_PATH
 
 # Same industry list as the organizers' question generator, so results are comparable.
 Industry = Literal[

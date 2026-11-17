@@ -22,10 +22,7 @@ import re
 
 from docling_core.types.doc import DoclingDocument
 
-from rag_demo.download import DATA_DIR
-from rag_demo.parse import PARSED_DIR
-
-CLEAN_DIR = DATA_DIR / "pages_clean"
+from rag_demo.paths import CLEAN_DIR, PAGES_DIR, PARSED_DIR
 
 EXPORT_OPTIONS = dict(
     compact_tables=True,
@@ -84,13 +81,14 @@ def main() -> None:
         sha1 = result["sha1"]
         (CLEAN_DIR / f"{sha1}.json").write_text(json.dumps(result, ensure_ascii=False, indent=2))
 
-        raw = json.loads((DATA_DIR / "pages" / f"{sha1}.json").read_text())
+        raw = json.loads((PAGES_DIR / f"{sha1}.json").read_text())
         before = sum(len(p["text"]) for p in raw["pages"])
         text = "\n".join(p["text"] for p in result["pages"])
         q = quality(text)
         broken = q["glyph_artifacts"] > 0 or q["vowelless_share"] > MAX_VOWELLESS_SHARE
+        shrink = 1 - len(text) / before
         print(
-            f"{sha1[:8]}  {before:>7} -> {len(text):>7} chars ({1 - len(text) / before:4.0%} smaller)"
+            f"{sha1[:8]}  {before:>7} -> {len(text):>7} chars ({shrink:4.0%} smaller)"
             f"  glyphs={q['glyph_artifacts']}  vowelless={q['vowelless_share']:.1%}"
             f"  {'BROKEN: re-parse with --ocr' if broken else 'ok'}"
         )

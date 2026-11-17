@@ -1,13 +1,12 @@
 """Settings loaded from environment variables or the .env file."""
 
 from functools import lru_cache
-from pathlib import Path
 
 from openai import OpenAI
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+from rag_demo.paths import PROJECT_ROOT
 
 
 class Settings(BaseSettings):

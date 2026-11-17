@@ -24,11 +24,7 @@ from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import PdfPipelineOptions
 from docling.document_converter import DocumentConverter, PdfFormatOption
 
-from rag_demo.download import DATA_DIR
-
-PDF_DIR = DATA_DIR / "pdf_reports"
-PARSED_DIR = DATA_DIR / "parsed"
-PAGES_DIR = DATA_DIR / "pages"
+from rag_demo.paths import PAGES_DIR, PARSED_DIR, PDF_DIR
 
 
 def build_converter(ocr: bool) -> DocumentConverter:

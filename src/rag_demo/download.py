@@ -23,7 +23,8 @@ import io
 import json
 import sys
 import urllib.request
-from pathlib import Path
+
+from rag_demo.paths import DATA_DIR, PDF_DIR
 
 ORGANIZER_URL = (
     "https://raw.githubusercontent.com/trustbit/enterprise-rag-challenge/"
@@ -34,8 +35,6 @@ ILYA_URL = (
     "452d688d1e0d6c3dc5150f9e42c2facb477178b7/data/erc2_set"
 )
 
-DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "erc2"
-PDF_DIR = DATA_DIR / "pdf_reports"
 
 COMPANIES = {
     "aa781901e117281bfee6f8e4bea6fc9c9bada62e": "AA Limited",
