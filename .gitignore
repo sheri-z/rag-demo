@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Secrets
+.env
+
+# Data (downloaded / generated, not committed)
+data/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
