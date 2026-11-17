@@ -229,7 +229,18 @@ Each run is saved to `data/erc2/runs/<name>.json` with the settings used.
 - Reference score: starts at 1, -0.1 per cited page that is not a gold page, -0.25 per gold page group missed.
 - Total = value + reference / 2, at most 1.5 per question.
 
+```bash
+uv run python -m rag_demo.evaluate --name gpt-4o-mini --repeat 3   # mean, min, max over 3 runs
+```
+
+Answers change between runs even at temperature 0, so one run is not enough to compare settings.
+Retrieval is nearly identical across runs; the changes come from borderline questions in answering,
+for example whether removing cumulative dividend rights on preferred stock counts as a change
+to Wheeler's capital structure.
+
 | Run | Value | Reference | Total |
 |---|---|---|---|
-| Winner (`o3-mini`) | 13/17 | 15.25/17 | 20.62/25.5 |
-| baseline (`gpt-4o-mini`) | 13/17 | 14.05/17 | 20.02/25.5 |
+| Winner (`o3-mini`), its competition answers | 13/17 | 15.25/17 | 20.62/25.5 |
+| `gpt-4o-mini`, mean of 3 runs | 12.67/17 (12-13) | 15.25/17 | 20.30/25.5 (19.73-20.68) |
+
+Before N/A answers stopped citing pages, the reference score was 14.05 in a single run.

@@ -17,6 +17,7 @@ configurations can be compared later.
 Usage:
     uv run python -m rag_demo.evaluate                 # saved as runs/<timestamp>.json
     uv run python -m rag_demo.evaluate --name baseline
+    uv run python -m rag_demo.evaluate --name baseline --repeat 3   # mean, min, max
 """
 
 import argparse
@@ -154,22 +155,10 @@ def print_report(questions: list[dict], ours: list[dict], ilya: list[dict]) -> N
         )
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    parser.add_argument("--name", default=datetime.now().strftime("%Y%m%d-%H%M%S"))
-    args = parser.parse_args()
-
-    questions = json.loads((DATA_DIR / "questions.json").read_text())
-    start = time.perf_counter()
-    ours = run(questions)
-    elapsed = time.perf_counter() - start
-    ilya = ilya_scores(questions)
-    print_report(questions, ours, ilya)
-
+def save_run(name: str, questions: list[dict], ours: list[dict], ilya: list[dict], elapsed: float):
     RUNS_DIR.mkdir(parents=True, exist_ok=True)
-    path = RUNS_DIR / f"{args.name}.json"
     record = {
-        "name": args.name,
+        "name": name,
         "settings": settings_snapshot(),
         "seconds": round(elapsed),
         "totals": totals(ours),
@@ -179,8 +168,41 @@ def main() -> None:
             for q, o in zip(questions, ours)
         ],
     }
+    path = RUNS_DIR / f"{name}.json"
     path.write_text(json.dumps(record, indent=2, ensure_ascii=False))
-    print(f"{elapsed:.0f}s  -> {path}")
+    return path
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    parser.add_argument("--name", default=datetime.now().strftime("%Y%m%d-%H%M%S"))
+    parser.add_argument(
+        "--repeat", type=int, default=1, help="runs to average; answers vary between runs"
+    )
+    args = parser.parse_args()
+
+    questions = json.loads((DATA_DIR / "questions.json").read_text())
+    ilya = ilya_scores(questions)
+    run_totals = []
+    for i in range(1, args.repeat + 1):
+        name = args.name if args.repeat == 1 else f"{args.name}-{i}"
+        start = time.perf_counter()
+        ours = run(questions)
+        elapsed = time.perf_counter() - start
+        print(f"\n=== {name} ===")
+        print_report(questions, ours, ilya)
+        path = save_run(name, questions, ours, ilya, elapsed)
+        print(f"{elapsed:.0f}s  -> {path}")
+        run_totals.append(totals(ours))
+
+    if args.repeat > 1:
+        print(f"\n=== {args.name}: {args.repeat} runs ===")
+        for key in ("value", "reference", "total"):
+            values = [t[key] for t in run_totals]
+            print(
+                f"{key:9} mean {sum(values) / len(values):5.2f}  "
+                f"min {min(values):5.2f}  max {max(values):5.2f}"
+            )
 
 
 if __name__ == "__main__":
