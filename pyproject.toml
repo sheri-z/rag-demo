@@ -7,7 +7,9 @@ authors = [
     { name = "sheri-z", email = "zhangshilin0920@outlook.com" }
 ]
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "docling>=2.150.1",
+]
 
 [build-system]
 requires = ["uv_build>=0.11.5,<0.12.0"]

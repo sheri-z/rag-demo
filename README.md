@@ -12,7 +12,7 @@ manually proofread gold answers for 17 questions. The winner's answers from
 
 - [x] Project skeleton
 - [x] Download dataset (5 annual reports + 17 questions with gold answers)
-- [ ] Parsing: PDF -> per-page Markdown with Docling (keep page numbers and tables)
+- [x] Parsing: PDF -> per-page Markdown with Docling (keep page numbers and tables)
 - [ ] Cleaning: inspect parse quality, regex cleanup of broken text
 - [ ] Tagging: LLM-extracted document metadata, checked against `subset.csv`
 - [ ] Ingestion: 300-token chunks (50 overlap), one FAISS index per company, page number in chunk metadata
@@ -62,3 +62,18 @@ The 8 multi-company comparison questions are out of scope: none of them involve 
 | `subset.csv` | Organizer metadata and tags (LLM-extracted by the organizers, used to generate questions) |
 | `questions.json` | 17 questions with gold answers and gold page references (converted to 1-based) |
 | `answers_ilya.json` | The winning system's answers to the same questions |
+
+## Parsing
+
+```bash
+uv run python -m rag_demo.parse            # all reports, or pass sha1 prefixes
+```
+
+Uses [Docling](https://github.com/docling-project/docling) with table structure on and OCR off
+(OCR is only needed for documents with a broken text layer). Output in `data/erc2/`:
+
+- `parsed/<sha1>.docling.json`: full Docling document, so later steps can re-export without re-parsing
+- `pages/<sha1>.json`: Markdown per page, 1-based page numbers
+
+On an Apple M4 it takes about 1 s per page (about 10 minutes for all 563 pages).
+The first run also downloads Docling's layout and table models.
