@@ -92,8 +92,17 @@ def same_company(a: str, b: str) -> bool:
     return core(a) == core(b)
 
 
+def strip_legal_suffix(name: str) -> str:
+    """'Wheeler Real Estate Investment Trust, Inc.' -> 'Wheeler Real Estate Investment Trust'."""
+    words = name.split()
+    while len(words) > 1 and words[-1].lower().strip(",.") in LEGAL_SUFFIXES:
+        words.pop()
+    return " ".join(words).rstrip(",")
+
+
 def routing_names(organizer_name: str, meta: DocumentMetadata) -> list[str]:
     names = [organizer_name, meta.company_name, *meta.aliases]
+    names += [strip_legal_suffix(n) for n in names]  # people often drop "Inc." or "Corp."
     seen, result = set(), []
     for n in names:
         key = normalize(n)
