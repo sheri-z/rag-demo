@@ -76,6 +76,8 @@ def answer(question: str, kind: AnswerKind) -> Answer:
     sha1 = pages[0].sha1
     retrieved = [p.page for p in pages]
     cited = list(dict.fromkeys(result.relevant_pages))  # dedupe, keep order
+    if result.final_answer == "N/A":
+        cited = []  # N/A means no page supports an answer (as in the original)
     return Answer(
         question=question,
         kind=kind,
