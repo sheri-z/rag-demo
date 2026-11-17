@@ -19,7 +19,7 @@ manually proofread gold answers for 17 questions. The winner's answers from
 - [x] Retrieval: company routing -> vector search -> parent page -> LLM reranking
 - [x] Answering: prompt routing by answer type, structured output with CoT and page references
 - [x] Evaluation: compare against the gold answers and the winner's answers on 17 questions
-- [ ] LangGraph workflow, web search fallback via MCP
+- [ ] LangGraph workflow, web search fallback via MCP (MCP server done)
 - [ ] FastAPI service + Postman collection
 - [ ] Dify version for comparison
 
@@ -244,3 +244,23 @@ to Wheeler's capital structure.
 | `gpt-4o-mini`, mean of 3 runs | 12.67/17 (12-13) | 15.25/17 | 20.30/25.5 (19.73-20.68) |
 
 Before N/A answers stopped citing pages, the reference score was 14.05 in a single run.
+
+## Web search MCP server
+
+```bash
+uv run python -m rag_demo.mcp_server          # MCP over stdio
+uv run mcp dev src/rag_demo/mcp_server.py     # try it in the MCP Inspector
+```
+
+`mcp_server.py` is a small MCP server written with the official Python SDK (`FastMCP`, `mcp` 1.x).
+It exposes one tool, `web_search(query, max_results=5)`, returning title, URL and snippet per result.
+
+- Search backend: DuckDuckGo through `ddgs`, no API key needed. Only `search()` depends on it.
+  `ddgs` sometimes finds nothing for an ordinary query, so `search()` retries 3 times and then
+  returns an empty list instead of a tool error. For steadier results, swap in a paid API such as Tavily.
+- Transport: stdio. The client starts the server as a subprocess, so the server never prints to stdout.
+- `mcp` is pinned below 2.0: version 2 renamed `FastMCP` and changed the client API, and
+  `langchain-mcp-adapters` (used by the LangGraph workflow) requires `mcp<2`.
+
+To use it from other MCP clients (Kiro, Claude Desktop), register the command
+`uv --directory <path-to-rag-demo> run python -m rag_demo.mcp_server`.
