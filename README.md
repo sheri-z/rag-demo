@@ -18,7 +18,7 @@ manually proofread gold answers for 17 questions. The winner's answers from
 - [x] Ingestion: 300-token chunks (50 overlap), one FAISS index per company, page number in chunk metadata
 - [x] Retrieval: company routing -> vector search -> parent page -> LLM reranking
 - [x] Answering: prompt routing by answer type, structured output with CoT and page references
-- [ ] Evaluation: compare against the gold answers and the winner's answers on 17 questions
+- [x] Evaluation: compare against the gold answers and the winner's answers on 17 questions
 - [ ] LangGraph workflow, web search fallback via MCP
 - [ ] FastAPI service + Postman collection
 - [ ] Dify version for comparison
@@ -215,3 +215,21 @@ Two changes from the original:
 First run on all 17 questions: 12 match the gold answer, the winner's system gets 13. The only question
 where the two systems differ is AA's new product launches: `gpt-4o-mini` reads new EV services as launches
 (gold: False). Proper scoring follows in the evaluation step.
+
+## Evaluation
+
+```bash
+uv run python -m rag_demo.evaluate --name baseline
+```
+
+Answers all 17 questions and scores them with the organizers' rules (`rank.py`), next to the winner's answers.
+Each run is saved to `data/erc2/runs/<name>.json` with the settings used.
+
+- Value score: numbers within 1%, booleans and names by equality, name lists by Jaccard overlap, N/A only matches N/A.
+- Reference score: starts at 1, -0.1 per cited page that is not a gold page, -0.25 per gold page group missed.
+- Total = value + reference / 2, at most 1.5 per question.
+
+| Run | Value | Reference | Total |
+|---|---|---|---|
+| Winner (`o3-mini`) | 13/17 | 15.25/17 | 20.62/25.5 |
+| baseline (`gpt-4o-mini`) | 13/17 | 14.05/17 | 20.02/25.5 |
