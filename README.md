@@ -13,7 +13,7 @@ manually proofread gold answers for 17 questions. The winner's answers from
 - [x] Project skeleton
 - [x] Download dataset (5 annual reports + 17 questions with gold answers)
 - [x] Parsing: PDF -> per-page Markdown with Docling (keep page numbers and tables)
-- [ ] Cleaning: inspect parse quality, regex cleanup of broken text
+- [x] Cleaning: inspect parse quality, regex cleanup of broken text
 - [ ] Tagging: LLM-extracted document metadata, checked against `subset.csv`
 - [ ] Ingestion: 300-token chunks (50 overlap), one FAISS index per company, page number in chunk metadata
 - [ ] Retrieval: company routing -> vector search -> parent page -> LLM reranking
@@ -77,3 +77,26 @@ Uses [Docling](https://github.com/docling-project/docling) with table structure 
 
 On an Apple M4 it takes about 1 s per page (about 10 minutes for all 563 pages).
 The first run also downloads Docling's layout and table models.
+
+## Cleaning
+
+```bash
+uv run python -m rag_demo.clean
+```
+
+Re-exports each page from the saved Docling JSON (no re-parsing) into `pages_clean/<sha1>.json`.
+
+- Docling export options do most of the work: compact tables (the column padding was 18-32% of
+  all characters), no HTML/underscore escaping, no image placeholders.
+- A few regexes remove table-of-contents dot leaders and extra whitespace.
+- A quality check flags documents with a broken text layer (glyph codes, garbled words) so they can be
+  re-parsed with `--ocr`. None of the 5 reports needed it.
+- Page headers and footers need no extra handling: Docling already excludes them from the body.
+
+| Report | Before | After | Smaller |
+|---|---|---|---|
+| AA Limited | 521,073 | 383,243 | 26% |
+| HCA Healthcare | 669,508 | 547,248 | 18% |
+| Wheeler REIT | 442,499 | 298,808 | 32% |
+| Ritchie Bros. | 659,037 | 492,093 | 25% |
+| Albany International | 540,368 | 389,245 | 28% |
