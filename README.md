@@ -11,7 +11,7 @@ manually proofread gold answers for 17 questions. The winner's answers from
 ## Roadmap
 
 - [x] Project skeleton
-- [ ] Download dataset (5 annual reports + 17 questions with gold answers)
+- [x] Download dataset (5 annual reports + 17 questions with gold answers)
 - [ ] Parsing: PDF -> per-page Markdown with Docling (keep page numbers and tables)
 - [ ] Cleaning: inspect parse quality, regex cleanup of broken text
 - [ ] Tagging: LLM-extracted document metadata, checked against `subset.csv`
@@ -34,3 +34,31 @@ Requires Python 3.12 and [uv](https://docs.astral.sh/uv/).
 uv sync
 cp .env.example .env   # then add your OPENAI_API_KEY
 ```
+
+## Data
+
+```bash
+uv run python -m rag_demo.download
+```
+
+Downloads into `data/erc2/` (git-ignored). Each source is pinned to a fixed commit, and each PDF
+is named by its SHA-1 and verified after download.
+
+The 5 companies have the most single-company questions among the 100 competition reports.
+6 of the 17 gold answers are N/A, which tests whether the system makes up answers.
+The 8 multi-company comparison questions are out of scope: none of them involve only these 5 companies.
+
+| Company | Pages | Questions |
+|---|---|---|
+| AA Limited | 62 | 4 |
+| HCA Healthcare, Inc. | 133 | 4 |
+| Wheeler Real Estate Investment Trust, Inc. | 93 | 3 |
+| Ritchie Bros. Auctioneers Incorporated | 144 | 3 |
+| Albany International Corp. | 131 | 3 |
+
+| File | Content |
+|---|---|
+| `pdf_reports/*.pdf` | 5 annual reports, 563 pages in total |
+| `subset.csv` | Organizer metadata and tags (LLM-extracted by the organizers, used to generate questions) |
+| `questions.json` | 17 questions with gold answers and gold page references (converted to 1-based) |
+| `answers_ilya.json` | The winning system's answers to the same questions |
