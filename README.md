@@ -16,7 +16,7 @@ manually proofread gold answers for 17 questions. The winner's answers from
 - [x] Cleaning: inspect parse quality, regex cleanup of broken text
 - [x] Tagging: LLM-extracted document metadata, checked against `subset.csv`
 - [x] Ingestion: 300-token chunks (50 overlap), one FAISS index per company, page number in chunk metadata
-- [ ] Retrieval: company routing -> vector search -> parent page -> LLM reranking
+- [x] Retrieval: company routing -> vector search -> parent page -> LLM reranking
 - [ ] Answering: prompt routing by answer type, structured output with CoT and page references
 - [ ] Evaluation: compare against the gold answers and the winner's answers on 17 questions
 - [ ] LangGraph workflow, web search fallback via MCP
@@ -159,3 +159,34 @@ Writes `data/erc2/indexes/<sha1>.faiss` and `<sha1>.chunks.json` (chunk id, page
 
 Quick check with plain vector search: for 7 of the 8 questions with gold pages, a gold page is among
 the pages of the top-5 chunks. The miss is Albany's "R&D spending on advanced programs".
+
+## Retrieval
+
+```bash
+uv run python -m rag_demo.router   "Did AA Limited announce any new product launches?"
+uv run python -m rag_demo.retrieve "Did AA Limited announce any new product launches?"
+uv run python -m rag_demo.retrieve --no-rerank "..."
+```
+
+1. **Company routing** (`router.py`): whole-word match against the routing list, longest name first.
+   Tickers of 4 characters or less match case-sensitively, so "AA" or "AIN" in ordinary words are ignored.
+   No LLM needed: 17/17 questions route correctly.
+2. **Vector search**: top 30 chunks in that company's index.
+3. **Parent pages**: chunks are mapped to their full pages, deduplicated, keeping the best chunk score.
+4. **LLM reranking**: `gpt-4o-mini` scores pages 2 at a time from 0 to 1, with the original prompt
+   (`prompts.py`). Combined score = 0.7 × LLM score + 0.3 × vector score. Top 10 pages are returned.
+
+One change from the original schema: each ranking also returns its block number. Scores used to be
+matched to pages by list position, and the model sometimes returned them out of order. In one batch
+the AA cash flow statement (page 37) got the score meant for the other page, 0.2 instead of 0.9.
+
+Rank of the first gold page, on the 8 questions that have gold pages:
+
+| | Gold page at #1 | In top 3 | In top 10 |
+|---|---|---|---|
+| Vector search only | 4/8 | 6/8 | 7/8 |
+| With LLM reranking | 7/8 | 7/8 | 7/8 |
+
+The miss is Albany's "R&D spending on advanced programs": the report says "Company-funded research
+expenses totaled $31.4 million". The wording differs so much that the page ranks 32nd in vector search,
+outside the 30-chunk sample, so reranking never sees it.
