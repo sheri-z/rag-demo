@@ -341,3 +341,9 @@ Run it from the command line with [Newman](https://github.com/postmanlabs/newman
 ```bash
 npx newman run postman/rag-demo.postman_collection.json --env-var "api_key=$API_KEY"
 ```
+
+## Temporary public link
+
+See [docs/public-link.md](docs/public-link.md): build the knowledge base, set an OpenAI budget limit,
+run the API and expose it with a Cloudflare quick tunnel. Only on a personal computer: a tunnel
+opens a path from the internet to the machine it runs on.
