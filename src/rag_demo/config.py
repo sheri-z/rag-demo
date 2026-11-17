@@ -13,7 +13,8 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=PROJECT_ROOT / ".env", extra="ignore")
 
     openai_api_key: SecretStr
-    llm_model: str = "gpt-4o-mini"
+    llm_model: str = "gpt-4o-mini"  # tagging and reranking
+    answer_model: str = "gpt-4o-mini"  # final answers; the original used o3-mini
     embedding_model: str = "text-embedding-3-small"
 
 

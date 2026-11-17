@@ -17,7 +17,7 @@ manually proofread gold answers for 17 questions. The winner's answers from
 - [x] Tagging: LLM-extracted document metadata, checked against `subset.csv`
 - [x] Ingestion: 300-token chunks (50 overlap), one FAISS index per company, page number in chunk metadata
 - [x] Retrieval: company routing -> vector search -> parent page -> LLM reranking
-- [ ] Answering: prompt routing by answer type, structured output with CoT and page references
+- [x] Answering: prompt routing by answer type, structured output with CoT and page references
 - [ ] Evaluation: compare against the gold answers and the winner's answers on 17 questions
 - [ ] LangGraph workflow, web search fallback via MCP
 - [ ] FastAPI service + Postman collection
@@ -190,3 +190,28 @@ Rank of the first gold page, on the 8 questions that have gold pages:
 The miss is Albany's "R&D spending on advanced programs": the report says "Company-funded research
 expenses totaled $31.4 million". The wording differs so much that the page ranks 32nd in vector search,
 outside the 30-chunk sample, so reranking never sees it.
+
+## Answering
+
+```bash
+uv run python -m rag_demo.answer --kind number "What was the Dividend per share (in USD) for Ritchie Bros. Auctioneers Incorporated?"
+```
+
+- One system prompt, example and schema per answer type (`name`, `number`, `boolean`, `names`), taken from
+  the original project (`prompts.py`). The number prompt carries most of the rules: exact metric match only,
+  no calculations, N/A on currency mismatch, scale by thousands or millions, parentheses mean negative.
+- Structured output with chain of thought: the schema field order makes the model write a step-by-step
+  analysis, then a summary, then the pages it used, then the final answer.
+- Cited pages that were not among the retrieved pages are dropped.
+- Answer model: `gpt-4o-mini` by default (`ANSWER_MODEL` in `.env`). The original won with `o3-mini`.
+
+Two changes from the original:
+
+- The boolean answer description said "if ... in context there is information about it, return False",
+  the opposite of what was meant. Fixed to "if the context has no information about it, return False".
+- The original padded page references to at least 2 pages, a scoring tactic for the competition.
+  Left out here.
+
+First run on all 17 questions: 12 match the gold answer, the winner's system gets 13. The only question
+where the two systems differ is AA's new product launches: `gpt-4o-mini` reads new EV services as launches
+(gold: False). Proper scoring follows in the evaluation step.
