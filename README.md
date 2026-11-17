@@ -269,13 +269,14 @@ To use it from other MCP clients (Kiro, Claude Desktop), register the command
 
 ```bash
 uv run python -m rag_demo.workflow --kind number "What was the Dividend per share (in USD) for Ritchie Bros. Auctioneers Incorporated?"
-uv run python -m rag_demo.workflow --kind number "What was Apple's total revenue in fiscal 2022 in USD?"
+uv run python -m rag_demo.workflow "What was Apple's total revenue in fiscal 2022 in USD?"   # kind detected
 uv run python -m rag_demo.workflow --mermaid
 ```
 
 ```mermaid
 graph TD;
-  START([start]) --> route
+  START([start]) --> classify
+  classify --> route
   route -.->|known company| retrieve
   route -.->|no known company, or several| web_search
   retrieve -.->|best page relevance >= 0.3| answer_from_kb
@@ -285,6 +286,8 @@ graph TD;
   answer_from_web --> END
 ```
 
+- `classify` asks the LLM for the answer type (number, boolean, name, names) when none is given,
+  so free-form questions work. It is skipped when `--kind` is passed.
 - `web_search` calls our MCP server through `langchain-mcp-adapters`, which starts it as a subprocess
   over stdio, the same way any MCP client would.
 - `answer_from_web` uses the same answer types and `final_answer` rules as the knowledge base prompts,

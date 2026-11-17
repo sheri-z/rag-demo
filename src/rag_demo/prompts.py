@@ -446,3 +446,23 @@ def _web_schema(kind_schema: type[BaseModel]) -> type[BaseModel]:
 WEB_ANSWER_SCHEMAS: dict[str, type[BaseModel]] = {
     kind: _web_schema(schema) for kind, (_, schema) in ANSWER_PROMPTS.items()
 }
+
+
+# ---------------------------------------------------------------------------
+# Answer type classification: for free-form questions that come without a kind
+# ---------------------------------------------------------------------------
+
+CLASSIFY_SYSTEM_PROMPT = """
+You classify a question about a company by the type of answer it expects.
+
+- number: a single numeric value (amount, count, percentage, ratio, per-share value)
+- boolean: a yes/no question ("Did ...", "Does ...", "Is there ...")
+- name: one name (a person, company, product, position or place)
+- names: a list of names ("Which ...", "What are the names of ...", "List ...")
+
+If several types fit, choose the most specific one the question asks for.
+"""
+
+
+class QuestionKind(BaseModel):
+    kind: Literal["number", "boolean", "name", "names"]

@@ -1,9 +1,13 @@
 """LangGraph workflow: answer from the knowledge base, fall back to web search over MCP.
 
-    START -> route -> retrieve -> answer_from_kb -> END
-               |          |
-               |          +-- (no page relevant enough) --+
-               +-- (no known company) --------------------+-> web_search -> answer_from_web -> END
+    START -> classify -> route -> retrieve -> answer_from_kb -> END
+                          |          |
+                          |          +-- (no page relevant enough) --+
+                          +-- (no known company) --------------------+-> web_search
+                                                                          -> answer_from_web -> END
+
+classify picks the answer type (number, boolean, name, names) with an LLM when the caller
+does not give one, so free-form questions work too.
 
 Fallback happens only when the knowledge base clearly cannot answer:
     - the question names no company in the knowledge base (or several, not supported yet)
@@ -15,7 +19,8 @@ Web search goes through our own MCP server (mcp_server.py), started as a subproc
 via langchain-mcp-adapters, the same way any MCP client would call it.
 
 Usage:
-    uv run python -m rag_demo.workflow --kind number "What was Apple's revenue in fiscal 2022?"
+    uv run python -m rag_demo.workflow "What was Apple's revenue in fiscal 2022?"
+    uv run python -m rag_demo.workflow --kind number "..."   # skip classification
     uv run python -m rag_demo.workflow --mermaid      # print the graph as a Mermaid diagram
 """
 
@@ -31,10 +36,12 @@ from rag_demo.answer import Answer, answer_from_pages
 from rag_demo.config import get_openai, get_settings
 from rag_demo.prompts import (
     ANSWER_PROMPTS,
+    CLASSIFY_SYSTEM_PROMPT,
     WEB_ANSWER_INSTRUCTION,
     WEB_ANSWER_SCHEMAS,
     WEB_ANSWER_USER_PROMPT,
     AnswerKind,
+    QuestionKind,
 )
 from rag_demo.retrieve import RetrievedPage, retrieve
 from rag_demo.router import route
@@ -56,7 +63,8 @@ MCP_SERVERS = {
 
 class State(TypedDict, total=False):
     question: str
-    kind: AnswerKind
+    kind: AnswerKind | None
+    kind_detected: bool
     company: str | None
     pages: list[RetrievedPage]
     fallback_reason: str | None
@@ -70,6 +78,29 @@ def _trace(state: State, step: str) -> list[str]:
 
 
 # --- nodes -------------------------------------------------------------------
+
+
+def _classify(question: str) -> AnswerKind:
+    response = get_openai().chat.completions.parse(
+        model=get_settings().llm_model,
+        temperature=0,
+        messages=[
+            {"role": "system", "content": CLASSIFY_SYSTEM_PROMPT.strip()},
+            {"role": "user", "content": question},
+        ],
+        response_format=QuestionKind,
+    )
+    return response.choices[0].message.parsed.kind
+
+
+async def classify_node(state: State) -> State:
+    if state.get("kind"):
+        return {
+            "kind_detected": False,
+            "trace": _trace(state, f"classify: given ({state['kind']})"),
+        }
+    kind = await asyncio.to_thread(_classify, state["question"])
+    return {"kind": kind, "kind_detected": True, "trace": _trace(state, f"classify: {kind}")}
 
 
 def route_node(state: State) -> State:
@@ -182,13 +213,15 @@ def after_retrieve(state: State) -> str:
 
 def build_graph():
     graph = StateGraph(State)
+    graph.add_node("classify", classify_node)
     graph.add_node("route", route_node)
     graph.add_node("retrieve", retrieve_node)
     graph.add_node("answer_from_kb", answer_from_kb_node)
     graph.add_node("web_search", web_search_node)
     graph.add_node("answer_from_web", answer_from_web_node)
 
-    graph.add_edge(START, "route")
+    graph.add_edge(START, "classify")
+    graph.add_edge("classify", "route")
     graph.add_conditional_edges("route", after_route, ["retrieve", "web_search"])
     graph.add_conditional_edges("retrieve", after_retrieve, ["answer_from_kb", "web_search"])
     graph.add_edge("answer_from_kb", END)
@@ -200,14 +233,14 @@ def build_graph():
 GRAPH = build_graph()
 
 
-async def run(question: str, kind: AnswerKind) -> State:
+async def run(question: str, kind: AnswerKind | None = None) -> State:
     return await GRAPH.ainvoke({"question": question, "kind": kind, "trace": []})
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("question", nargs="?")
-    parser.add_argument("--kind", choices=sorted(ANSWER_PROMPTS), default="name")
+    parser.add_argument("--kind", choices=sorted(ANSWER_PROMPTS), help="default: detect")
     parser.add_argument("--mermaid", action="store_true", help="print the graph and exit")
     args = parser.parse_args()
 
