@@ -21,7 +21,8 @@ manually proofread gold answers for 17 questions. The winner's answers from
 - [x] Evaluation: compare against the gold answers and the winner's answers on 17 questions
 - [x] LangGraph workflow, web search fallback via MCP
 - [x] FastAPI service
-- [ ] Postman collection, temporary public link
+- [x] Postman collection
+- [ ] Temporary public link (instructions in `docs/public-link.md`)
 - [ ] Dify version for comparison
 
 Table serialization is left out on purpose: the original author found it slightly hurt results.
@@ -328,3 +329,15 @@ Every `/ask` call costs OpenAI credits (about $0.005-0.01), so access is limited
 - Unexpected errors return `{"detail": "internal error"}`; details go to the server log only.
 - The server listens on 127.0.0.1 only. Public access goes through a tunnel.
 - Also set a monthly usage limit for the OpenAI key in the OpenAI dashboard.
+
+## Postman
+
+Import `postman/rag-demo.postman_collection.json` into Postman, then set the collection variables
+`base_url` (local or tunnel URL) and `api_key`. The 7 requests cover both answer paths, kind detection,
+a missing key (401) and an invalid body (422), with 17 test assertions.
+
+Run it from the command line with [Newman](https://github.com/postmanlabs/newman):
+
+```bash
+npx newman run postman/rag-demo.postman_collection.json --env-var "api_key=$API_KEY"
+```

@@ -1,0 +1,183 @@
+{
+  "info": {
+    "name": "rag-demo",
+    "description": "Requests for the rag-demo HTTP API.\n\nSet the collection variables before sending:\n- base_url: http://127.0.0.1:8000 locally, or the public tunnel URL\n- api_key: the API_KEY from the server's .env (sent as X-API-Key)\n\nEach request has tests that check the status code and response shape.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "apikey",
+    "apikey": [
+      { "key": "key", "value": "X-API-Key", "type": "string" },
+      { "key": "value", "value": "{{api_key}}", "type": "string" },
+      { "key": "in", "value": "header", "type": "string" }
+    ]
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://127.0.0.1:8000" },
+    { "key": "api_key", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "GET",
+        "url": "{{base_url}}/health"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "pm.test('status ok', () => pm.expect(pm.response.json().status).to.eql('ok'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Companies",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/companies"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "pm.test('5 companies', () => pm.expect(pm.response.json()).to.have.lengthOf(5));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Ask - knowledge base (number, kind detected)",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/ask",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"question\": \"What was the Dividend per share (in USD) for Ritchie Bros. Auctioneers Incorporated?\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "pm.test('answered from the knowledge base', () => pm.expect(body.source).to.eql('knowledge_base'));",
+              "pm.test('kind detected as number', () => { pm.expect(body.kind).to.eql('number'); pm.expect(body.kind_detected).to.be.true; });",
+              "pm.test('answer is 0.27', () => pm.expect(body.answer).to.eql(0.27));",
+              "pm.test('cites a report page', () => pm.expect(body.references.length).to.be.above(0));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Ask - knowledge base (boolean, kind given)",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/ask",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"question\": \"Did AA Limited report any changes to its capital structure?\",\n  \"kind\": \"boolean\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "pm.test('kind not detected', () => pm.expect(body.kind_detected).to.be.false);",
+              "pm.test('boolean answer', () => pm.expect(body.answer).to.be.a('boolean'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Ask - web fallback (company not in knowledge base)",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/ask",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"question\": \"What was Apple's total revenue in fiscal 2022 in USD?\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "pm.test('answered from the web', () => pm.expect(body.source).to.eql('web'));",
+              "pm.test('explains the fallback', () => pm.expect(body.fallback_reason).to.be.a('string'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Ask - missing API key (expect 401)",
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "POST",
+        "url": "{{base_url}}/ask",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"question\": \"What was the Dividend per share for Ritchie Bros. Auctioneers Incorporated?\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": ["pm.test('status 401', () => pm.response.to.have.status(401));"]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Ask - invalid body (expect 422)",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/ask",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"question\": \"hi\",\n  \"kind\": \"date\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": ["pm.test('status 422', () => pm.response.to.have.status(422));"]
+          }
+        }
+      ]
+    }
+  ]
+}
