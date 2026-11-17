@@ -14,7 +14,7 @@ manually proofread gold answers for 17 questions. The winner's answers from
 - [x] Download dataset (5 annual reports + 17 questions with gold answers)
 - [x] Parsing: PDF -> per-page Markdown with Docling (keep page numbers and tables)
 - [x] Cleaning: inspect parse quality, regex cleanup of broken text
-- [ ] Tagging: LLM-extracted document metadata, checked against `subset.csv`
+- [x] Tagging: LLM-extracted document metadata, checked against `subset.csv`
 - [ ] Ingestion: 300-token chunks (50 overlap), one FAISS index per company, page number in chunk metadata
 - [ ] Retrieval: company routing -> vector search -> parent page -> LLM reranking
 - [ ] Answering: prompt routing by answer type, structured output with CoT and page references
@@ -100,3 +100,34 @@ Re-exports each page from the saved Docling JSON (no re-parsing) into `pages_cle
 | Wheeler REIT | 442,499 | 298,808 | 32% |
 | Ritchie Bros. | 659,037 | 492,093 | 25% |
 | Albany International | 540,368 | 389,245 | 28% |
+
+## Tagging
+
+```bash
+uv run python -m rag_demo.tag
+```
+
+Extracts document metadata with `gpt-4o-mini` structured output and writes `data/erc2/metadata.json`.
+
+- Input: the first pages of each report (up to 15k characters), plus the 3 most frequent
+  "year ended <date>" phrases from the whole report. The first pages often name only the report year:
+  AA's "Annual Report 2021" covers the year ended 31 January 2022.
+- Fields: legal name, aliases and tickers, currency, industry (the organizers' list), period end.
+- Routing list: the organizer name plus the extracted names and aliases, mapped to the report's sha1.
+  It is used later to route a question to the right company index.
+
+Compared with the organizer metadata (`subset.csv`, also LLM-extracted):
+
+| Field | Match |
+|---|---|
+| Company name (ignoring legal suffixes like "Inc.") | 5/5 |
+| Currency | 5/5 |
+| Industry | 4-5/5 |
+| Period end | 5/5 (checked by hand) |
+
+Industry is the one unstable field. Albany International makes paper machine fabrics and aerospace
+composites, so runs alternate between "Aerospace & Defense" (the organizers' label) and "Technology".
+It is not used for routing.
+
+Short aliases such as "AA" can appear inside other words, so routing must match whole words and
+prefer the longest name.
