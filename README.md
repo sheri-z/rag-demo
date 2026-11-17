@@ -336,10 +336,16 @@ Import `postman/rag-demo.postman_collection.json` into Postman, then set the col
 `base_url` (local or tunnel URL) and `api_key`. The 7 requests cover both answer paths, kind detection,
 a missing key (401) and an invalid body (422), with 17 test assertions.
 
+The `Examples` folder has 7 free-form questions without a `kind`, each answer checked by hand against
+the report page it comes from (for example HCA's 182 hospitals on page 10, Albany's net sales on page 58),
+plus one web fallback question. Run it on its own: together with the rest of the collection it would
+go over the default limit of 10 `/ask` requests per minute.
+
 Run it from the command line with [Newman](https://github.com/postmanlabs/newman):
 
 ```bash
 npx newman run postman/rag-demo.postman_collection.json --env-var "api_key=$API_KEY"
+npx newman run postman/rag-demo.postman_collection.json --folder Examples --env-var "api_key=$API_KEY"
 ```
 
 ## Temporary public link

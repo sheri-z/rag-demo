@@ -7,20 +7,40 @@
   "auth": {
     "type": "apikey",
     "apikey": [
-      { "key": "key", "value": "X-API-Key", "type": "string" },
-      { "key": "value", "value": "{{api_key}}", "type": "string" },
-      { "key": "in", "value": "header", "type": "string" }
+      {
+        "key": "key",
+        "value": "X-API-Key",
+        "type": "string"
+      },
+      {
+        "key": "value",
+        "value": "{{api_key}}",
+        "type": "string"
+      },
+      {
+        "key": "in",
+        "value": "header",
+        "type": "string"
+      }
     ]
   },
   "variable": [
-    { "key": "base_url", "value": "http://127.0.0.1:8000" },
-    { "key": "api_key", "value": "" }
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:8000"
+    },
+    {
+      "key": "api_key",
+      "value": ""
+    }
   ],
   "item": [
     {
       "name": "Health",
       "request": {
-        "auth": { "type": "noauth" },
+        "auth": {
+          "type": "noauth"
+        },
         "method": "GET",
         "url": "{{base_url}}/health"
       },
@@ -61,7 +81,12 @@
       "request": {
         "method": "POST",
         "url": "{{base_url}}/ask",
-        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
         "body": {
           "mode": "raw",
           "raw": "{\n  \"question\": \"What was the Dividend per share (in USD) for Ritchie Bros. Auctioneers Incorporated?\"\n}"
@@ -89,7 +114,12 @@
       "request": {
         "method": "POST",
         "url": "{{base_url}}/ask",
-        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
         "body": {
           "mode": "raw",
           "raw": "{\n  \"question\": \"Did AA Limited report any changes to its capital structure?\",\n  \"kind\": \"boolean\"\n}"
@@ -115,7 +145,12 @@
       "request": {
         "method": "POST",
         "url": "{{base_url}}/ask",
-        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
         "body": {
           "mode": "raw",
           "raw": "{\n  \"question\": \"What was Apple's total revenue in fiscal 2022 in USD?\"\n}"
@@ -139,10 +174,17 @@
     {
       "name": "Ask - missing API key (expect 401)",
       "request": {
-        "auth": { "type": "noauth" },
+        "auth": {
+          "type": "noauth"
+        },
         "method": "POST",
         "url": "{{base_url}}/ask",
-        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
         "body": {
           "mode": "raw",
           "raw": "{\n  \"question\": \"What was the Dividend per share for Ritchie Bros. Auctioneers Incorporated?\"\n}"
@@ -153,7 +195,9 @@
           "listen": "test",
           "script": {
             "type": "text/javascript",
-            "exec": ["pm.test('status 401', () => pm.response.to.have.status(401));"]
+            "exec": [
+              "pm.test('status 401', () => pm.response.to.have.status(401));"
+            ]
           }
         }
       ]
@@ -163,7 +207,12 @@
       "request": {
         "method": "POST",
         "url": "{{base_url}}/ask",
-        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
         "body": {
           "mode": "raw",
           "raw": "{\n  \"question\": \"hi\",\n  \"kind\": \"date\"\n}"
@@ -174,8 +223,254 @@
           "listen": "test",
           "script": {
             "type": "text/javascript",
-            "exec": ["pm.test('status 422', () => pm.response.to.have.status(422));"]
+            "exec": [
+              "pm.test('status 422', () => pm.response.to.have.status(422));"
+            ]
           }
+        }
+      ]
+    },
+    {
+      "name": "Examples",
+      "description": "Free-form questions checked by hand against the reports. Each costs about $0.005-0.01.\n\nRun this folder on its own (right-click > Run folder): together with the rest of the collection it would exceed the default limit of 10 /ask requests per minute and get 429 responses.",
+      "item": [
+        {
+          "name": "Auditor of HCA (name)",
+          "request": {
+            "description": "Expected: Ernst & Young LLP, page 79. The answer type is detected automatically (expected: name).",
+            "method": "POST",
+            "url": "{{base_url}}/ask",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"Who is the auditor of HCA Healthcare, Inc.?\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const a = body.answer;",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('kind name', () => pm.expect(body.kind).to.eql('name'));",
+                  "pm.test('source knowledge_base', () => pm.expect(body.source).to.eql('knowledge_base'));",
+                  "pm.test('answer matches the report', () => pm.expect(String(a).toLowerCase().includes('ernst & young')).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Albany net sales 2022 (number)",
+          "request": {
+            "description": "Expected: 1,034,887,000: page 58 reports $1,034,887 in thousands. The answer type is detected automatically (expected: number).",
+            "method": "POST",
+            "url": "{{base_url}}/ask",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"What were the total net sales of Albany International Corp. in 2022 in USD?\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const a = body.answer;",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('kind number', () => pm.expect(body.kind).to.eql('number'));",
+                  "pm.test('source knowledge_base', () => pm.expect(body.source).to.eql('knowledge_base'));",
+                  "pm.test('answer matches the report', () => pm.expect(Math.abs(a - 1034887000) < 0.01 * 1034887000).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Albany segments (names)",
+          "request": {
+            "description": "Expected: Machine Clothing and Albany Engineered Composites, page 14. The answer type is detected automatically (expected: names).",
+            "method": "POST",
+            "url": "{{base_url}}/ask",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"Which reportable segments does Albany International Corp. have?\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const a = body.answer;",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('kind names', () => pm.expect(body.kind).to.eql('names'));",
+                  "pm.test('source knowledge_base', () => pm.expect(body.source).to.eql('knowledge_base'));",
+                  "pm.test('answer matches the report', () => pm.expect(Array.isArray(a) && a.join(' ').includes('Machine Clothing') && a.join(' ').includes('Engineered Composites')).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ritchie Bros. CEO (name)",
+          "request": {
+            "description": "Expected: Ann Fandozzi, signature page 136. The answer type is detected automatically (expected: name).",
+            "method": "POST",
+            "url": "{{base_url}}/ask",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"Who is the Chief Executive Officer of Ritchie Bros. Auctioneers Incorporated?\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const a = body.answer;",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('kind name', () => pm.expect(body.kind).to.eql('name'));",
+                  "pm.test('source knowledge_base', () => pm.expect(body.source).to.eql('knowledge_base'));",
+                  "pm.test('answer matches the report', () => pm.expect(String(a).includes('Fandozzi')).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HCA hospitals (number)",
+          "request": {
+            "description": "Expected: 182, page 10. The answer type is detected automatically (expected: number).",
+            "method": "POST",
+            "url": "{{base_url}}/ask",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"How many hospitals did HCA Healthcare, Inc. operate at the end of 2022?\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const a = body.answer;",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('kind number', () => pm.expect(body.kind).to.eql('number'));",
+                  "pm.test('source knowledge_base', () => pm.expect(body.source).to.eql('knowledge_base'));",
+                  "pm.test('answer matches the report', () => pm.expect(a === 182).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Wheeler common dividends (boolean)",
+          "request": {
+            "description": "Expected: False: page 62 says no dividends were declared on common stock. The answer type is detected automatically (expected: boolean).",
+            "method": "POST",
+            "url": "{{base_url}}/ask",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"Did Wheeler Real Estate Investment Trust, Inc. pay dividends on its common stock in 2022?\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const a = body.answer;",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('kind boolean', () => pm.expect(body.kind).to.eql('boolean'));",
+                  "pm.test('source knowledge_base', () => pm.expect(body.source).to.eql('knowledge_base'));",
+                  "pm.test('answer matches the report', () => pm.expect(a === false).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Microsoft CEO (web fallback)",
+          "request": {
+            "description": "Expected: Not in the knowledge base, answered by web search over MCP. The answer type is detected automatically (expected: name).",
+            "method": "POST",
+            "url": "{{base_url}}/ask",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"Who is the CEO of Microsoft?\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const a = body.answer;",
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('kind name', () => pm.expect(body.kind).to.eql('name'));",
+                  "pm.test('source web', () => pm.expect(body.source).to.eql('web'));",
+                  "pm.test('answer matches the report', () => pm.expect(String(a).includes('Nadella')).to.be.true);"
+                ]
+              }
+            }
+          ]
         }
       ]
     }

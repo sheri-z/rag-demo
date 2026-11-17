@@ -16,3 +16,9 @@ data/
 .DS_Store
 .idea/
 .vscode/
+
+# Postman desktop app workspace files (generated when the folder is opened in Postman).
+# The shared collection is postman/rag-demo.postman_collection.json.
+.postman/
+postman/*
+!postman/rag-demo.postman_collection.json
