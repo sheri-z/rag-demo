@@ -40,13 +40,10 @@ def parse_pdf(converter: DocumentConverter, pdf: Path) -> dict:
 
     page_count = len(doc.pages)
     pages = [
-        {"page": n, "text": doc.export_to_markdown(page_no=n)}
-        for n in range(1, page_count + 1)
+        {"page": n, "text": doc.export_to_markdown(page_no=n)} for n in range(1, page_count + 1)
     ]
     result = {"sha1": pdf.stem, "page_count": page_count, "pages": pages}
-    (PAGES_DIR / f"{pdf.stem}.json").write_text(
-        json.dumps(result, ensure_ascii=False, indent=2)
-    )
+    (PAGES_DIR / f"{pdf.stem}.json").write_text(json.dumps(result, ensure_ascii=False, indent=2))
     return result
 
 

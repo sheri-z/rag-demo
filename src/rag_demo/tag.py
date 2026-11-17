@@ -18,47 +18,14 @@ import csv
 import json
 import re
 from collections import Counter
-from typing import Literal
-
-from pydantic import BaseModel, Field
 
 from rag_demo.config import get_openai, get_settings
 from rag_demo.paths import CLEAN_DIR, DATA_DIR, METADATA_PATH
-
-# Same industry list as the organizers' question generator, so results are comparable.
-Industry = Literal[
-    "Technology", "Financial Services", "Healthcare", "Automotive",
-    "Retail", "Energy and Utilities", "Hospitality", "Telecommunications",
-    "Media & Entertainment", "Pharmaceuticals", "Aerospace & Defense",
-    "Transport & Logistics", "Food & Beverage",
-]  # fmt: skip
+from rag_demo.prompts import TAGGING_SYSTEM_PROMPT, DocumentMetadata
 
 MAX_CHARS = 15_000  # enough for cover + contents + intro, about 4k tokens
 MAX_PAGES = 8
 
-
-class EndOfPeriod(BaseModel):
-    year: int
-    month: int = Field(ge=1, le=12)
-
-
-class DocumentMetadata(BaseModel):
-    company_name: str = Field(description="Full legal name of the reporting company")
-    aliases: list[str] = Field(
-        description="Other names used for the company: short names, former names, "
-        "stock tickers with and without exchange prefix (e.g. 'HCA', 'NYSE: HCA')"
-    )
-    currency: str = Field(description="ISO 4217 code of the main reporting currency, e.g. USD")
-    major_industry: Industry
-    end_of_period: EndOfPeriod = Field(description="End of the fiscal period the report covers")
-
-
-SYSTEM_PROMPT = (
-    "You extract metadata from the first pages of a company annual report. "
-    "Use only information stated in the text. For the industry, choose the closest option. "
-    "For end_of_period, prefer the 'Period statements' section: it lists the most frequent "
-    "'year ended <date>' phrases in the whole report."
-)
 
 # The first pages often name the report year without the exact period end
 # (e.g. AA "Annual Report 2021" covers the year ended 31 January 2022).
@@ -98,7 +65,7 @@ def extract(sha1: str) -> DocumentMetadata:
         model=get_settings().llm_model,
         temperature=0,
         messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": TAGGING_SYSTEM_PROMPT},
             {"role": "user", "content": build_input(sha1)},
         ],
         response_format=DocumentMetadata,
